@@ -1,0 +1,399 @@
+{
+  "info": {
+    "name": "URL Shortener API",
+    "description": "A minimal URL shortener microservice with custom rate limiting.\n\n## Features\n- POST /shorten - Create shortened URLs\n- GET /{short_code} - Redirect to original URL\n- Rate limiting: 5 requests per IP per minute\n- Returns 429 with Retry-After header when limit exceeded",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "url-shortener-api"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8000",
+      "type": "string"
+    },
+    {
+      "key": "short_code",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            },
+            "description": "Check if the API service is running and healthy."
+          },
+          "response": [
+            {
+              "name": "Healthy Response",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{base_url}}/health",
+                  "host": ["{{base_url}}"],
+                  "path": ["health"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n    \"status\": \"healthy\",\n    \"service\": \"URL Shortener with Rate Limiter\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "URL Shortening",
+      "item": [
+        {
+          "name": "Shorten URL",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Save short_code for use in other requests",
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('short_code', jsonData.short_code);",
+                  "    console.log('Saved short_code:', jsonData.short_code);",
+                  "}",
+                  "",
+                  "// Test response structure",
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response has short_code', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('short_code');",
+                  "});",
+                  "",
+                  "pm.test('Response has short_url', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('short_url');",
+                  "});",
+                  "",
+                  "pm.test('Rate limit headers present', function () {",
+                  "    pm.response.to.have.header('X-RateLimit-Limit');",
+                  "    pm.response.to.have.header('X-RateLimit-Remaining');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"url\": \"https://www.google.com/search?q=django+rest+framework\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/shorten",
+              "host": ["{{base_url}}"],
+              "path": ["shorten"]
+            },
+            "description": "Create a shortened URL from a long URL.\n\n**Rate Limited:** Max 5 requests per IP per minute.\n\nWhen rate limit is exceeded, returns HTTP 429 with Retry-After header."
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"url\": \"https://www.google.com/search?q=django+rest+framework\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/shorten",
+                  "host": ["{{base_url}}"],
+                  "path": ["shorten"]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "X-RateLimit-Limit",
+                  "value": "5"
+                },
+                {
+                  "key": "X-RateLimit-Remaining",
+                  "value": "4"
+                },
+                {
+                  "key": "X-RateLimit-Reset",
+                  "value": "60"
+                }
+              ],
+              "body": "{\n    \"short_code\": \"Ab3x9Q\",\n    \"short_url\": \"http://127.0.0.1:8000/Ab3x9Q\",\n    \"original_url\": \"https://www.google.com/search?q=django+rest+framework\",\n    \"created_at\": \"2024-01-01T12:00:00Z\"\n}"
+            },
+            {
+              "name": "Rate Limited Response",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"url\": \"https://example.com\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/shorten",
+                  "host": ["{{base_url}}"],
+                  "path": ["shorten"]
+                }
+              },
+              "status": "Too Many Requests",
+              "code": 429,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Retry-After",
+                  "value": "45"
+                },
+                {
+                  "key": "X-RateLimit-Limit",
+                  "value": "5"
+                },
+                {
+                  "key": "X-RateLimit-Remaining",
+                  "value": "0"
+                }
+              ],
+              "body": "{\n    \"error\": \"Rate limit exceeded\",\n    \"detail\": \"Too many requests. Please try again later.\",\n    \"retry_after\": 45\n}"
+            }
+          ]
+        },
+        {
+          "name": "Shorten URL - Invalid URL",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"url\": \"not-a-valid-url\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/shorten",
+              "host": ["{{base_url}}"],
+              "path": ["shorten"]
+            },
+            "description": "Test with an invalid URL format. Should return 400 Bad Request."
+          },
+          "response": [
+            {
+              "name": "Invalid URL Response",
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "body": "{\n    \"url\": [\n        \"Enter a valid URL.\"\n    ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Shorten URL - Missing URL Field",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{base_url}}/shorten",
+              "host": ["{{base_url}}"],
+              "path": ["shorten"]
+            },
+            "description": "Test with missing URL field. Should return 400 Bad Request."
+          },
+          "response": [
+            {
+              "name": "Missing URL Response",
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "body": "{\n    \"url\": [\n        \"This field is required.\"\n    ]\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Redirect",
+      "item": [
+        {
+          "name": "Redirect to Original URL",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/{{short_code}}",
+              "host": ["{{base_url}}"],
+              "path": ["{{short_code}}"]
+            },
+            "description": "Redirect to the original URL using the short code.\n\n**Note:** Run 'Shorten URL' first to get a valid short_code.\n\nReturns HTTP 302 redirect to the original URL."
+          },
+          "response": [
+            {
+              "name": "Redirect Response",
+              "status": "Found",
+              "code": 302,
+              "header": [
+                {
+                  "key": "Location",
+                  "value": "https://www.google.com/search?q=django+rest+framework"
+                }
+              ],
+              "body": ""
+            }
+          ]
+        },
+        {
+          "name": "Redirect - Invalid Short Code",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/nonexistent123",
+              "host": ["{{base_url}}"],
+              "path": ["nonexistent123"]
+            },
+            "description": "Test with a non-existent short code. Should return 404 Not Found."
+          },
+          "response": [
+            {
+              "name": "Not Found Response",
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "body": "{\n    \"detail\": \"Not found.\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Statistics",
+      "item": [
+        {
+          "name": "Get URL Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/stats/{{short_code}}",
+              "host": ["{{base_url}}"],
+              "path": ["stats", "{{short_code}}"]
+            },
+            "description": "Get statistics for a shortened URL including access count.\n\n**Note:** Run 'Shorten URL' first to get a valid short_code."
+          },
+          "response": [
+            {
+              "name": "Stats Response",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n    \"short_code\": \"Ab3x9Q\",\n    \"original_url\": \"https://www.google.com/search?q=django+rest+framework\",\n    \"created_at\": \"2024-01-01T12:00:00Z\",\n    \"access_count\": 5\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Rate Limit Testing",
+      "item": [
+        {
+          "name": "Test Rate Limit (Run 6 times)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Check rate limit headers",
+                  "pm.test('Has rate limit headers', function () {",
+                  "    pm.response.to.have.header('X-RateLimit-Limit');",
+                  "    pm.response.to.have.header('X-RateLimit-Remaining');",
+                  "});",
+                  "",
+                  "// Log remaining requests",
+                  "var remaining = pm.response.headers.get('X-RateLimit-Remaining');",
+                  "console.log('Requests remaining:', remaining);",
+                  "",
+                  "// Check if rate limited",
+                  "if (pm.response.code === 429) {",
+                  "    pm.test('Rate limit exceeded - has Retry-After', function () {",
+                  "        pm.response.to.have.header('Retry-After');",
+                  "    });",
+                  "    var retryAfter = pm.response.headers.get('Retry-After');",
+                  "    console.log('Rate limited! Retry after:', retryAfter, 'seconds');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"url\": \"https://example.com/rate-limit-test\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/shorten",
+              "host": ["{{base_url}}"],
+              "path": ["shorten"]
+            },
+            "description": "Run this request 6 times quickly to test rate limiting.\n\n- First 5 requests: Should succeed (201)\n- 6th request: Should be rate limited (429)\n\nCheck the console for rate limit status."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
